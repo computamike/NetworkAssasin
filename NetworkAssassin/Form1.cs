@@ -19,10 +19,20 @@ namespace NetworkAssassin
         {
             InitializeComponent();
         }
-        private bool Enabled = true; 
+
+        /// <summary>
+        /// Tracks current state of network, is it dead or alive?
+        /// </summary>
+        private bool Enabled = true;
+
+        /// <summary>
+        /// Collection of "assassin targets" (network adapters).
+        /// </summary>
         private Dictionary<string, int> NetworkStates = new Dictionary<string,int>();
 
-
+        /// <summary>
+        /// On click issues an assasinate (or revival) attempt for identified adapters.
+        /// </summary>
         private void button1_Click(object sender, EventArgs e)
         {
             foreach (var item in NetworkStates.Keys )
@@ -46,7 +56,9 @@ namespace NetworkAssassin
             Enabled = !Enabled;
         }
 
-
+        /// <summary>
+        /// Overrides paint event to add a background image of awesomeness...
+        /// </summary>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -59,6 +71,10 @@ namespace NetworkAssassin
 
            
         }
+
+        /// <summary>
+        /// When the form loads, issues a scan for adapters.
+        /// </summary>
         private void Form1_Load(object sender, EventArgs e)
         {
  
@@ -69,6 +85,9 @@ namespace NetworkAssassin
 
         }
 
+        /// <summary>
+        /// Scans for adapters, and exposes them as a list.
+        /// </summary>
         private Dictionary<string, int> GetDeviceSettings()
         {
             Dictionary<string, int> NetworkStates = new Dictionary<string, int>();
