@@ -8,6 +8,7 @@ using System.Drawing.Imaging;
 using System.Linq;
 using System.Management;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -19,17 +20,27 @@ namespace NetworkAssassin
         {
             InitializeComponent();
         }
-        private bool Enabled = true; 
-        private Dictionary<string, int> NetworkStates = new Dictionary<string,int>();
 
+        /// <summary>
+        /// Tracks current state of network, is it dead or alive?
+        /// </summary>
+        private bool Enabled = true;
 
+        /// <summary>
+        /// Collection of "assassin targets" (network adapters).
+        /// </summary>
+        private List<AssassinTarget> AssassinTargets = new List<AssassinTarget>();
+
+        /// <summary>
+        /// On click issues an assasinate (or revival) attempt for identified adapters.
+        /// </summary>
         private void button1_Click(object sender, EventArgs e)
         {
-            foreach (var item in NetworkStates.Keys )
+            foreach (var item in AssassinTargets)
             {
-                if (NetworkStates[item] == 2)
+                if (item.Status == 2)
                 {// Kill it with FIRE
-                    SelectQuery query = new SelectQuery("Win32_NetworkAdapter", "DeviceID="+item.ToString() );
+                    SelectQuery query = new SelectQuery("Win32_NetworkAdapter", "DeviceID=" + item.Id);
                     ManagementObjectSearcher search = new ManagementObjectSearcher(query);
                  
                     foreach (var adapt in search.Get())
@@ -37,16 +48,28 @@ namespace NetworkAssassin
                         
                         ManagementObject adapter =  (ManagementObject)adapt;
                         if (Enabled)
-                        { adapter.InvokeMethod("Disable", null); }
+                        {
+                            toolStripLabel1.Text = string.Format("Disabling \"{0}\"...", item.Name);
+                            adapter.InvokeMethod("Disable", null);
+                        }
                         else
-                        { adapter.InvokeMethod("Enable", null); }
+                        {
+                            toolStripLabel1.Text = string.Format("Enabling \"{0}\"...", item.Name);
+                            adapter.InvokeMethod("Enable", null);
+                        }
+                        // Sleep to give user a bit of time to read messages.
+                        Thread.Sleep(500); 
                     }
                 }
             }
+
+            toolStripLabel1.Text = Enabled ? "Networks assassinated." : "Networks revived.";
             Enabled = !Enabled;
         }
 
-
+        /// <summary>
+        /// Overrides paint event to add a background image of awesomeness...
+        /// </summary>
         protected override void OnPaint(PaintEventArgs e)
         {
             base.OnPaint(e);
@@ -59,31 +82,37 @@ namespace NetworkAssassin
 
            
         }
+
+        /// <summary>
+        /// When the form loads, issues a scan for adapters.
+        /// </summary>
         private void Form1_Load(object sender, EventArgs e)
         {
  
             // Get Network States
-            NetworkStates.Clear();
-            NetworkStates = GetDeviceSettings();
+            AssassinTargets.Clear();
+            AssassinTargets = GetDeviceSettings();
 
+            toolStripLabel1.Text = "Targets loaded...";
 
         }
 
-        private Dictionary<string, int> GetDeviceSettings()
+        /// <summary>
+        /// Scans for adapters, and exposes them as a list.
+        /// </summary>
+        private List<AssassinTarget> GetDeviceSettings()
         {
-            Dictionary<string, int> NetworkStates = new Dictionary<string, int>();
+            List<AssassinTarget> states = new List<AssassinTarget>();
             SelectQuery AllNetworkAdapterQuery = new SelectQuery("Win32_NetworkAdapter");
             ManagementObjectSearcher search = new ManagementObjectSearcher(AllNetworkAdapterQuery);
             var res = search.Get();
 
             foreach (ManagementObject result in search.Get())
             {
-                NetworkAdapter adapter = new NetworkAdapter(result);
-
-                NetworkStates.Add(adapter.DeviceID, adapter.NetConnectionStatus);
+                states.Add(new AssassinTarget(new NetworkAdapter(result)));
             }
-            return NetworkStates;
 
+            return states;
         }
     }
 }
